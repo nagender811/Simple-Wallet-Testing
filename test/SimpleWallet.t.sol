@@ -13,6 +13,7 @@ contract SimpleWalletTest is Test {
 
     error Unauthorized();
     error EmergencyActive();
+     error SuspiciousActivityDetected();
 
     function setUp() public {
         owner = address(this);
@@ -53,7 +54,9 @@ contract SimpleWalletTest is Test {
         wallet.depositToContract{value: 5 ether}(testStartTime);
         uint256 balanceOfBobBefore = bob.balance;
         uint256 balanceOfContractbefore = wallet.getContractBalanceInWei();
-        uint256 transactionHistoryLengthBefore = wallet.getTransactionHistory().length;
+        uint256 transactionHistoryLengthBefore = wallet
+            .getTransactionHistory()
+            .length;
 
         vm.prank(owner);
 
@@ -61,20 +64,30 @@ contract SimpleWalletTest is Test {
 
         uint256 balanceOfBobAfter = bob.balance;
         uint256 balanceOfContractAfter = wallet.getContractBalanceInWei();
-        uint256 transactionHistoryLengthAfter = wallet.getTransactionHistory().length;
+        uint256 transactionHistoryLengthAfter = wallet
+            .getTransactionHistory()
+            .length;
 
-        
-        assertEq(balanceOfBobAfter - balanceOfBobBefore, ethersTotransferFromContract);
-        assertEq(balanceOfContractbefore - balanceOfContractAfter, ethersTotransferFromContract);
-        
-        assertEq(transactionHistoryLengthAfter - transactionHistoryLengthBefore, 1);
+        assertEq(
+            balanceOfBobAfter - balanceOfBobBefore,
+            ethersTotransferFromContract
+        );
+        assertEq(
+            balanceOfContractbefore - balanceOfContractAfter,
+            ethersTotransferFromContract
+        );
+
+        assertEq(
+            transactionHistoryLengthAfter - transactionHistoryLengthBefore,
+            1
+        );
     }
 
     function testEmergencyModeBlocksNormalOperations() public {
         uint256 testStartTime = block.timestamp - 1;
         vm.prank(owner);
         wallet.toggleEmergencyMode();
-        
+
         vm.deal(alice, 1 ether);
         vm.prank(alice);
 
@@ -90,7 +103,8 @@ contract SimpleWalletTest is Test {
 
         wallet.depositToContract{value: 5 ether}(testStartTime);
 
-        uint256 contractBalanceBeforeWithdrawal = wallet.getContractBalanceInWei();
+        uint256 contractBalanceBeforeWithdrawal = wallet
+            .getContractBalanceInWei();
 
         vm.prank(owner);
         wallet.toggleEmergencyMode();
@@ -98,10 +112,14 @@ contract SimpleWalletTest is Test {
 
         uint256 balanceOfOwnerAfter = owner.balance;
 
-        uint256 contractBalanceAfterWithdrawal = wallet.getContractBalanceInWei();
+        uint256 contractBalanceAfterWithdrawal = wallet
+            .getContractBalanceInWei();
 
         assertEq(contractBalanceAfterWithdrawal, 0);
-        assertEq(balanceOfOwnerAfter - balanceOfOwnerBefore, contractBalanceBeforeWithdrawal);
+        assertEq(
+            balanceOfOwnerAfter - balanceOfOwnerBefore,
+            contractBalanceBeforeWithdrawal
+        );
     }
 
     function testTransactionsAreStoredCorrectly() public {
@@ -114,7 +132,8 @@ contract SimpleWalletTest is Test {
 
         wallet.transferFromContract(payable(bob), ethersTotransferFromContract);
 
-        SimpleWallet.Transaction[] memory transactions = wallet.getTransactionHistory();
+        SimpleWallet.Transaction[] memory transactions = wallet
+            .getTransactionHistory();
 
         assertEq(transactions.length, 2);
         assertEq(transactions[0].sender, alice);
@@ -124,7 +143,27 @@ contract SimpleWalletTest is Test {
         assertEq(transactions[1].sender, address(wallet));
         assertEq(transactions[1].receiver, bob);
         assertEq(transactions[1].amount, ethersTotransferFromContract);
-        
+    }
+
+    function testSuspiciousUserDetection() public {
+        uint256 testStartTime = block.timestamp - 1;
+
+        for (uint256 i = 0; i < 5; i++) {
+            vm.prank(bob);
+
+            (bool success, ) = address(wallet).call(
+                abi.encodeWithSignature("wallet.suspicious()")
+            );
+
+            assertTrue(success);
+        }
+
+        vm.deal(bob, 1 ether);
+
+        vm.prank(bob);
+        vm.expectRevert(SuspiciousActivityDetected.selector);
+
+        wallet.depositToContract{value: 1 ether}(testStartTime);
     }
 
     receive() external payable {}
