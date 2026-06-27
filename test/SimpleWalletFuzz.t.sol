@@ -78,5 +78,19 @@ contract SimpleWalletFuzzTest is Test {
         assertEq(wallet.walletOwner(), newOwner);
     }
 
-    
+    function testFuzz_TransferDirectlyToUserSendsCorrectAmount(
+        uint256 amount
+    ) public {
+        uint256 balanceOfBobBefore = bob.balance;
+        vm.assume(amount > 0);
+        vm.deal(alice, amount);
+        vm.prank(alice);
+
+        wallet.transferDirectlyToUser{value: amount}(payable(bob));
+
+        uint256 balanceOfBobAfter = bob.balance;
+
+        assertEq(balanceOfBobAfter - balanceOfBobBefore, amount);
+    }
+
 }
