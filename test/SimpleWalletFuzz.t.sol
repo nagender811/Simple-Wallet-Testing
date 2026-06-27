@@ -92,5 +92,14 @@ contract SimpleWalletFuzzTest is Test {
 
         assertEq(balanceOfBobAfter - balanceOfBobBefore, amount);
     }
+    function testFuzz_DepositStartTimeBehavesCorrectly(
+        uint256 testStartTime
+    ) public {
+        vm.assume(testStartTime >= block.timestamp);
+        vm.deal(alice, 1 ether);
+        vm.prank(alice);
 
+        vm.expectRevert(StartTimeNotReached.selector);
+        wallet.depositToContract{value: 1 ether}(testStartTime);
+    }
 }
