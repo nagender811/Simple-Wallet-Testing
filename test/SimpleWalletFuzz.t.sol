@@ -66,5 +66,17 @@ contract SimpleWalletFuzzTest is Test {
         assertEq(balanceOfBobAfter, balanceOfBobBefore + amount);
     }
 
-   
+    function testFuzz_OwnershipTransferForAnyValidAddress(
+        address newOwner
+    ) public {
+        newOwner = address(
+            uint160(bound(uint160(newOwner), 1, type(uint160).max))
+        );
+
+        wallet.changeOwner(newOwner);
+
+        assertEq(wallet.walletOwner(), newOwner);
+    }
+
+    
 }
