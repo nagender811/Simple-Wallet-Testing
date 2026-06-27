@@ -41,4 +41,30 @@ contract SimpleWalletFuzzTest is Test {
         );
     }
 
+    function testFuzz_TransferFromContractUpdatesBalances(
+        uint256 depositAmount,
+        uint256 amount
+    ) public {
+        uint256 testStartTime = block.timestamp - 1;
+        depositAmount = bound(depositAmount, 1, 1000 ether);
+        vm.deal(alice, depositAmount);
+
+        vm.prank(alice);
+        wallet.depositToContract{value: depositAmount}(testStartTime);
+
+        uint256 balanceOfBobBefore = bob.balance;
+
+        amount = bound(amount, 1, depositAmount);
+
+        wallet.transferFromContract(payable(bob), amount);
+
+        uint256 balanceOfContractAfter = wallet.getContractBalanceInWei();
+        uint256 balanceOfBobAfter = bob.balance;
+
+        assertEq(balanceOfContractAfter, depositAmount - amount);
+
+        assertEq(balanceOfBobAfter, balanceOfBobBefore + amount);
+    }
+
+   
 }
